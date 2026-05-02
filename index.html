@@ -151,9 +151,23 @@ ${wordList}
         document.getElementById("step2").style.display = "block";
         renderQ();
     } catch(e) {
-        setStatus1("生成失敗：可能是網路問題或網址授權未開啟。錯誤訊息：" + e.message, "err");
-        document.querySelector(".btn-primary").disabled = false;
+    console.error("發生錯誤了:", e);
+    
+    // 把錯誤物件的所有屬性都挖出來
+    let detailedError = "";
+    if (e instanceof Error) {
+        detailedError = `${e.name}: ${e.message}`;
+    } else {
+        detailedError = JSON.stringify(e);
     }
+    
+    // 特別檢查是否為連線被擋下
+    if (detailedError === "{}" || detailedError === "") {
+        detailedError = "網路請求被攔截 (可能是 CORS 或網址填寫不完整)";
+    }
+
+    setStatus1("失敗原因：" + detailedError, "err");
+    document.querySelector(".btn-primary").disabled = false;
 }
 
 function renderQ() {
