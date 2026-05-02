@@ -48,15 +48,16 @@ async function parseAndGenerate() {
     try {
         const response = await fetch(GAS_URL, {
             method: "POST",
-            mode: "no-cors", // 加入這行，強迫不檢查 CORS
-            headers: {
-                "Content-Type": "text/plain"
-            },
+            // 移除 no-cors，改用預設的 cors
             body: JSON.stringify({ prompt: input })
         });
 
         const resultText = await response.text();
-        console.log("GAS Response:", resultText);
+        console.log("GAS Response Raw:", resultText);
+
+        if (!resultText) {
+            throw new Error("伺服器回傳內容為空，請檢查 GAS 執行紀錄。");
+        }
 
         const data = JSON.parse(resultText);
         
