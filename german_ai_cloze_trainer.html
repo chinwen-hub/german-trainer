@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德語單字 AI 練習器 (Gemini版)</title>
+    <style>
+        :root {
+            --color-background-primary: #ffffff;
+            --color-background-secondary: #f9f9fb;
+            --color-text-primary: #1a1a1a;
+            --color-text-secondary: #4a4a4a;
+            --color-text-tertiary: #999;
+            --color-border-primary: #7F77DD;
+            --color-border-secondary: #e1e1e1;
+            --color-border-tertiary: #eee;
+            --border-radius-md: 8px;
+            --border-radius-lg: 12px;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:var(--font-sans); background: #f5f5f7; display: flex; justify-content: center;}
+        .app{padding:1.5rem; width: 100%; max-width: 600px;}
+        .section-label{font-size:11px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+        textarea{width:100%;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:12px;font-size:14px;background:var(--color-background-primary);color:var(--color-text-primary);font-family:var(--font-sans);resize:vertical;line-height:1.5;min-height: 150px;}
+        textarea:focus{outline:none;border-color:var(--color-border-primary)}
+        .btn-primary{font-size:14px;padding:10px 20px; background: #7F77DD; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s;}
+        .btn-primary:disabled{background: #ccc; cursor: not-allowed;}
+        .status{font-size:13px;min-height:18px;margin:8px 0}
+        .status.err{color:#A32D2D}.status.ok{color:#0F6E56}.status.info{color:var(--color-text-secondary)}
+        .word-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+        .chip{padding:4px 12px;border-radius:20px;font-size:12px;border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary);background:var(--color-background-secondary)}
+        .chip.verb{background:#EEEDFE;color:#3C3489;border-color:#AFA9EC}
+        .chip.noun{background:#E1F5EE;color:#085041;border-color:#5DCAA5}
+        .card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.5rem;margin-bottom:1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05)}
+        .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-bottom: 8px;}
+        .badge-verb{background:#EEEDFE;color:#3C3489}
+        .badge-noun{background:#E1F5EE;color:#085041}
+        .sentence-de{font-size:17px;color:var(--color-text-primary);line-height:1.8;margin-bottom:10px}
+        .sentence-zh{font-size:14px;color:var(--color-text-secondary);margin-bottom:20px}
+        .blank-input{border:none;border-bottom:2px solid var(--color-border-primary);background:transparent;font-size:17px;color:var(--color-text-primary);padding:2px 4px;min-width:80px;outline:none;text-align:center}
+        .blank-input.correct{border-bottom-color:#1D9E75;color:#1D9E75}
+        .blank-input.wrong{border-bottom-color:#E24B4A;color:#E24B4A}
+        .action-row{display:flex;gap:10px;align-items:center;margin-top:15px}
+        .next-btn{font-size:13px;border:1px solid var(--color-border-secondary);background:white;padding:8px 16px;border-radius:var(--border-radius-md);cursor:pointer;color:var(--color-text-secondary)}
+        .feedback{font-size:14px;padding:12px;border-radius:var(--border-radius-md);margin-top:15px;display:none;line-height:1.6}
+        .fb-ok{background:#E1F5EE;color:#085041;display:block}
+        .fb-err{background:#FCEBEB;color:#A32D2D;display:block}
+        .score-strip{display:flex;gap:10px;margin-bottom:1.25rem}
+        .sc{flex:1;background:white;border-radius:var(--border-radius-md);padding:10px;text-align:center;border: 0.5px solid #eee}
+        .sc-n{font-size:22px;font-weight:600;color:var(--color-text-primary)}
+        .sc-l{font-size:11px;color:var(--color-text-secondary)}
+        .progress-bar-wrap{height:4px;background:#e1e1e1;border-radius:2px;margin-bottom:1.5rem}
+        .progress-bar{height:4px;background:#7F77DD;border-radius:2px;transition:width .4s}
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <div id="step1">
+        <div class="section-label">貼上德文單字 (如：Ursache, f., 原因)</div>
+        <textarea id="vocab-input" placeholder="直接複製你的單字表貼上即可..."></textarea>
+        <div style="margin-top:12px">
+            <button class="btn-primary" onclick="parseAndGenerate()">AI 生成例句並開始練習 →</button>
+        </div>
+        <div class="word-chips" id="word-chips"></div>
+        <div class="status" id="status1"></div>
+    </div>
+
+    <div id="step2" style="display:none">
+        <div class="score-strip">
+            <div class="sc"><div class="sc-n" id="sc-ok">0</div><div class="sc-l">答對</div></div>
+            <div class="sc"><div class="sc-n" id="sc-ng">0</div><div class="sc-l">答錯</div></div>
+            <div class="sc"><div class="sc-n" id="sc-rem">–</div><div class="sc-l">剩餘</div></div>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
+        <div id="exercise-area"></div>
+        <div style="margin-top:15px">
+            <button class="next-btn" onclick="resetAll()">← 重新輸入</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 已自動填入你的 GAS 網址
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzlgP96-gaqSSUqowHUtp9paQu7PvttChu5B7yH0Epv1Ck4-l-zM9YdppShwSQfrkM/exec";
+
+let parsedWords = [];
+let allQuestions = [];
+let qIdx = 0, okCount = 0, ngCount = 0;
+let answered = false;
+
+function parseVocabLines(raw) {
+    const lines = raw.split("\n").map(l=>l.trim()).filter(l=>l);
+    const found = [], seen = new Set();
+    for (const line of lines) {
+        // 支援多種分隔符號
+        const cols = line.split(/[,\t]+/).map(c=>c.trim());
+        let word = cols[0];
+        if (!word || seen.has(word.toLowerCase())) continue;
+        
+        seen.add(word.toLowerCase());
+        let def = cols.find(c=>/[\u4e00-\u9fff]/.test(c)) || "";
+        let pos = cols.find(c=>/^(vt|vi|f\.|m\.|n\.|adj|adv)/.test(c.toLowerCase())) || "";
+        
+        // 簡單判斷詞性
+        let category = "verb";
+        if (pos.includes("f.") || pos.includes("m.") || pos.includes("n.") || /^[A-ZÄÖÜ]/.test(word)) category = "noun";
+        
+        found.push({word, def, pos, category});
+    }
+    return found;
+}
+
+async function parseAndGenerate() {
+    const raw = document.getElementById("vocab-input").value.trim();
+    if (!raw) return;
+    parsedWords = parseVocabLines(raw);
+    if (!parsedWords.length) { setStatus1("找不到單字，請檢查格式", "err"); return; }
+
+    renderWordChips();
+    setStatus1("AI 正在出題中，請稍候...", "info");
+    document.querySelector(".btn-primary").disabled = true;
+
+    const wordList = parsedWords.map(w => `${w.word} (${w.pos} ${w.def})`).join("\n");
+    const prompt = `你是德語老師。請根據清單為每個單字生成2個填空題。
+清單：
+${wordList}
+規則：
+1. 回傳JSON。
+2. 包含: "word", "category", "de" (挖空處用___), "zh", "answer", "grammar"。
+3. 名詞題必須包含冠詞。`;
+
+    try {
+        const resp = await fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ prompt: prompt })
+        });
+        const data = await resp.json();
+        
+        if (data.error) throw new Error(data.error);
+        const text = data.candidates[0].content.parts[0].text;
+        const clean = text.replace(/```json|```/g,"").trim();
+        const parsed = JSON.parse(clean);
+        
+        allQuestions = shuffleArr(parsed.questions || []);
+        
+        qIdx = 0; okCount = 0; ngCount = 0;
+        updateScore();
+        document.getElementById("step1").style.display = "none";
+        document.getElementById("step2").style.display = "block";
+        renderQ();
+    } catch(e) {
+        setStatus1("生成失敗：可能是網路問題或網址授權未開啟。錯誤訊息：" + e.message, "err");
+        document.querySelector(".btn-primary").disabled = false;
+    }
+}
+
+function renderQ() {
+    answered = false;
+    const area = document.getElementById("exercise-area");
+    document.getElementById("prog-bar").style.width = (qIdx/allQuestions.length*100) + "%";
+
+    if (qIdx >= allQuestions.length) {
+        area.innerHTML = `<div class="card" style="text-align:center"><h2>🎉 練習完成！</h2><p>答對 ${okCount} / 答錯 ${ngCount}</p></div>`;
+        return;
+    }
+
+    const q = allQuestions[qIdx];
+    const badgeClass = q.category === "noun" ? "badge-noun" : "badge-verb";
+    const parts = q.de.split("___");
+    let deHtml = parts[0] + `<input class="blank-input" id="ans" autocomplete="off" onkeydown="if(event.key==='Enter')check()" />` + (parts[1] || "");
+
+    area.innerHTML = `<div class="card">
+        <div class="badge ${badgeClass}">${q.word}</div>
+        <div class="sentence-de">${deHtml}</div>
+        <div class="sentence-zh">${q.zh}</div>
+        <div class="action-row">
+            <button class="btn-primary" onclick="check()">檢查答案 ↵</button>
+            <button class="next-btn" id="next-btn" style="display:none" onclick="nextQ()">下一題 →</button>
+        </div>
+        <div class="feedback" id="fb"></div>
+    </div>`;
+    setTimeout(() => document.getElementById("ans").focus(), 50);
+}
+
+function check() {
+    if (answered) return;
+    const inp = document.getElementById("ans");
+    const val = inp.value.trim();
+    if (!val) return;
+    answered = true;
+    const q = allQuestions[qIdx];
+    const isCorrect = val.toLowerCase() === q.answer.toLowerCase();
+    inp.classList.add(isCorrect ? "correct" : "wrong");
+    const fb = document.getElementById("fb");
+    fb.style.display = "block";
+    if (isCorrect) {
+        okCount++;
+        fb.className = "feedback fb-ok";
+        fb.textContent = "✓ 正確！";
+    } else {
+        ngCount++;
+        fb.className = "feedback fb-err";
+        fb.innerHTML = `✗ 錯誤。正確答案：<strong>${q.answer}</strong><br><small>提示：${q.grammar}</small>`;
+    }
+    updateScore();
+    document.getElementById("next-btn").style.display = "inline-block";
+}
+
+function nextQ() { qIdx++; renderQ(); }
+function updateScore() {
+    document.getElementById("sc-ok").textContent = okCount;
+    document.getElementById("sc-ng").textContent = ngCount;
+    document.getElementById("sc-rem").textContent = allQuestions.length - qIdx;
+}
+function renderWordChips() {
+    document.getElementById("word-chips").innerHTML = parsedWords.map(w=>`<div class="chip">${w.word}</div>`).join("");
+}
+function setStatus1(m,t){ const e=document.getElementById("status1"); e.textContent=m; e.className="status "+t; }
+function shuffleArr(a){ return a.sort(() => Math.random() - 0.5); }
+function resetAll() { location.reload(); }
+</script>
+
+</body>
+</html>
