@@ -48,6 +48,10 @@ async function parseAndGenerate() {
     try {
         const response = await fetch(GAS_URL, {
             method: "POST",
+            mode: "no-cors", // 加入這行，強迫不檢查 CORS
+            headers: {
+                "Content-Type": "text/plain"
+            },
             body: JSON.stringify({ prompt: input })
         });
 
